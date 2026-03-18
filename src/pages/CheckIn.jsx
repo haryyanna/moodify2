@@ -85,47 +85,50 @@ const CheckIn = () => {
         setIsSaving(true);
 
         try {
-            // create or get user from Supabase
-            let { data: existingUser, error: userError } = await supabase
-                .from('users')
-                .select('id')
-                .eq('username', username)
-                .single();
-
-            let userId;
-            if (userError && !existingUser) {
-                // user not found, create
-                const { data: newUser, error: insertError } = await supabase
+            if (!supabase) {
+                console.warn('Supabase client tidak tersedia. Menggunakan localStorage saja.');
+            } else {
+                // create or get user from Supabase
+                let { data: existingUser, error: userError } = await supabase
                     .from('users')
-                    .insert({ username })
                     .select('id')
+                    .eq('username', username)
                     .single();
 
-                if (insertError) {
-                    console.error('Supabase insert user error', insertError);
+                let userId;
+                if (userError && !existingUser) {
+                    const { data: newUser, error: insertError } = await supabase
+                        .from('users')
+                        .insert({ username })
+                        .select('id')
+                        .single();
+
+                    if (insertError) {
+                        console.error('Supabase insert user error', insertError);
+                    }
+
+                    userId = newUser?.id;
+                } else {
+                    userId = existingUser?.id;
                 }
 
-                userId = newUser?.id;
-            } else {
-                userId = existingUser?.id;
-            }
+                if (userId) {
+                    const { error: insertCheckinError } = await supabase.from('checkins').insert({
+                        user_id: userId,
+                        mood: selectedMood,
+                        sadness: sliders.sadness,
+                        anxiety: sliders.anxiety,
+                        stress: sliders.stress,
+                        journal: journalText,
+                        created_at: newEntry.date
+                    });
 
-            if (userId) {
-                const { error: insertCheckinError } = await supabase.from('checkins').insert({
-                    user_id: userId,
-                    mood: selectedMood,
-                    sadness: sliders.sadness,
-                    anxiety: sliders.anxiety,
-                    stress: sliders.stress,
-                    journal: journalText,
-                    created_at: newEntry.date
-                });
-
-                if (insertCheckinError) {
-                    console.error('Supabase insert checkin error', insertCheckinError);
+                    if (insertCheckinError) {
+                        console.error('Supabase insert checkin error', insertCheckinError);
+                    }
+                } else {
+                    console.error('Supabase: tidak dapat menentukan userId');
                 }
-            } else {
-                console.error('Supabase: tidak dapat menentukan userId');
             }
         } catch (e) {
             console.error('Supabase save error', e);
