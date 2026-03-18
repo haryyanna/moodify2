@@ -138,6 +138,10 @@ const AdminDatabase = () => {
             };
 
             try {
+                if (!supabase) {
+                    throw new Error('Supabase client tidak tersedia.');
+                }
+
                 const { data: userRows, error: supabaseError } = await supabase
                     .from('users')
                     .select('id, username, created_at, checkins(mood, sadness, anxiety, stress, journal, created_at)');
